@@ -1,41 +1,90 @@
+# 짧은 트윗의 감정을 CNN으로 구분할 수 있을까?
 
-# 🐦 Twitter Sentiment Analysis using CNN & NLP
-> **A deep learning project exploring the trade-offs between accuracy and computational efficiency in sentiment classification.**
+**Twitter Sentiment Classification with 1D CNN**  
+`Python` · `PyTorch` · `CNN` · `NLP` · `Sentiment140`
 
-## 📌 Overview
-This project investigates sentiment classification on the **Sentiment140 dataset** (1.6M tweets). The core objective was to build an optimized **Convolutional Neural Network (CNN)** for text and compare its performance against a transformer-based model (**DistilBERT**), focusing on convergence behavior and computational costs.
+이미지 분류에 자주 사용되는 CNN을 짧은 문장에도 적용해 보고 싶었습니다. 트윗은 길이가 짧지만, 같은 단어가 들어가더라도 주변에 어떤 표현이 붙느냐에 따라 긍정적이거나 부정적으로 읽힐 수 있습니다. 이런 문장 속 패턴을 CNN이 얼마나 잘 구분하는지 확인하는 것이 이 프로젝트의 출발점이었습니다.
 
-## 📊 Key Results
-- **Best Model Accuracy**: **80.08%** (Experiment 6)
-- **Primary Insight**: Small 3-gram features (kernel size 3) were more effective for short-form tweets than larger kernels or deeper architectures.
-- **Optimization**: Optimized the model to achieve high performance with only ~1.04M parameters, ensuring efficiency.
+단순히 모델을 한 번 학습시키고 정확도를 확인하는 데서 끝내지 않고, **커널 크기와 임베딩 차원, 입력 문장의 길이**를 바꿔 가며 결과를 비교했습니다. 그 과정에서 모델의 설정을 크게 하거나 복잡하게 만든다고 반드시 성능이 좋아지는 것은 아니라는 점을 배웠습니다.
 
-## 🛠 Tech Stack
-- **Language**: Python
-- **Deep Learning**: PyTorch
-- **Environment**: Google Colab
-- **NLP Techniques**: Tokenization, Padding, Word Embeddings, Pre-trained Transformers (DistilBERT)
+## 프로젝트 결과
 
-## 🧪 Experiments & Insights
-I conducted 8 controlled experiments to find the optimal balance between accuracy and cost:
+| 항목 | 결과 |
+|---|---|
+| 데이터 | Sentiment140, 약 160만 개의 영어 트윗 |
+| 분류 목표 | 긍정 / 부정 이진 분류 |
+| 모델 | PyTorch 기반 1D CNN |
+| 비교 실험 | 총 8회 |
+| 기준 실험 Test Accuracy | **73.59%** |
+| 최고 실험 Test Accuracy | **80.08%** |
 
-| Config | Changes | Test Accuracy | Note |
-|:---:|:---|:---:|:---|
-| Exp 1 | Baseline CNN | 73.59% | Starting point |
-| **Exp 6** | **Kernel Size (5 → 3)** | **80.08%** | **Best Performance** |
-| Exp 7 | Embed Dim (100 → 500) | 68.44% | Overfitting observed |
-| Exp 8 | Seq Length (50 → 250) | 73.65% | High cost, low gain |
+가장 성능이 좋았던 모델의 **Test Accuracy는 80.08%**였습니다. 이 수치는 프로젝트에서 사용한 평가 조건에 따른 결과이며, 모든 트윗이나 실제 서비스 환경에서 같은 성능을 보장하는 것은 아닙니다.
 
-### 🔍 Major Takeaways
-1. **Kernel Size Matters**: Using a smaller kernel (size 3) captured short-range linguistic patterns in tweets better than size 5.
-2. **Efficiency vs. Performance**: While DistilBERT showed strong potential, the custom CNN (Exp 6) provided a highly competitive accuracy with significantly lower inference latency.
-3. **Embedding Overfitting**: Increasing embedding dimensions to 500 actually decreased accuracy, suggesting that a simpler 100-dim vector is sufficient for the 10,000-word vocabulary used.
+## 1. 데이터를 어떻게 다뤘나
 
-## 📂 Project Structure
-- `9891_final_project.ipynb`: Full training pipeline and experimental logs.
-- `Final Project Report.pdf`: Detailed analysis of hyperparameters and convergence.
+사용한 데이터는 [Sentiment140](https://huggingface.co/datasets/stanfordnlp/sentiment140)입니다. 약 160만 개의 영어 트윗이 긍정 또는 부정으로 구분되어 있습니다. 원본 학습 데이터에서는 `0`이 부정, `4`가 긍정에 해당합니다.
 
-## 🚀 How to Run
-1. Clone the repository.
-2. Download the Sentiment140 dataset from Kaggle.
-3. Open the notebook in Google Colab and run all cells.
+트윗은 일반적인 문장보다 짧고, 줄임말이나 특수한 표현이 많습니다. 또 CNN은 문장을 그대로 받아들일 수 없기 때문에 텍스트를 숫자 형태의 입력으로 바꾸어 학습시켜야 합니다. 이 프로젝트에서는 텍스트를 모델 입력으로 구성하고, **문장을 어느 길이까지 사용할지**도 실험 조건으로 두었습니다.
+
+여기서 입력 길이를 늘리면 더 많은 정보를 보존할 수 있을 것 같지만, 무조건 유리하지는 않았습니다. 짧은 트윗에서 필요 없는 부분까지 늘어날 수 있고, 계산량도 달라지기 때문입니다. 실제 실험에서도 **시퀀스 길이를 늘린다고 성능이 계속 개선되지는 않았습니다.**
+
+## 2. 왜 CNN을 사용했나
+
+이번에는 문장 전체를 복잡하게 이해하는 거대한 언어모델보다, **문장 안에 반복해서 등장하는 짧은 표현을 학습하는 방식**에 관심이 있었습니다.
+
+1D CNN은 단어 임베딩으로 표현한 문장 위를 작은 필터가 이동하면서 인접한 단어들의 패턴을 찾습니다. 예를 들어 긍정이나 부정을 드러내는 짧은 표현이 있다면, 이런 국소적인 특징을 분류에 활용할 수 있습니다.
+
+다만 CNN이 문맥을 완벽하게 이해하는 것은 아닙니다. 특히 반어법이나 문장 전체의 맥락을 살펴야 하는 표현에서는 한계가 있을 수 있습니다. 그래서 이 프로젝트의 목표를 **텍스트 분류에서 CNN이 어느 정도까지 작동하는지 확인하고, 설정을 바꿨을 때 성능이 어떻게 변하는지 살펴보는 것**으로 잡았습니다.
+
+## 3. 어떤 설정을 바꿔 봤나
+
+모델을 한 번 만든 후에는 설정을 바꿔 가며 **8번의 실험**을 진행했습니다. 그중 가장 기억에 남는 것은 커널 크기 실험입니다.
+
+### 커널 크기: 5에서 3으로
+
+처음에는 한 번에 더 많은 단어를 보는 큰 커널이 유리할 수도 있다고 생각했습니다. 하지만 실험에서 **커널 크기를 5에서 3으로 줄였을 때 성능이 개선**됐습니다.
+
+짧은 트윗에서는 긴 표현보다 더 짧은 단어 조합이 감정을 구분하는 데 효과적일 수 있겠다고 생각했습니다. 물론 이번 결과만으로 커널 크기 3이 항상 최선이라고 말할 수는 없습니다. 데이터와 다른 모델 설정이 바뀌면 결과도 달라질 수 있기 때문입니다.
+
+### 임베딩 차원과 입력 길이
+
+임베딩 차원을 늘리면 단어를 더 풍부하게 표현할 수 있고, 입력 길이를 늘리면 더 긴 문장을 읽을 수 있습니다. 그런데 실제 실험에서는 **이 두 값을 키우는 것이 항상 정확도 향상으로 이어지지는 않았습니다.**
+
+이 부분이 꽤 흥미로웠습니다. 처음에는 모델이 더 많은 정보를 다루면 좋을 것 같지만, 실험 결과를 보니 데이터 특성에 맞는 설정을 찾는 일이 더 중요했습니다. 정확도만 볼 것이 아니라 모델이 처리해야 하는 계산량도 함께 고려해야겠다고 느꼈습니다.
+
+### 실험에서 확인한 결과
+
+| 비교 | Test Accuracy |
+|---|---:|
+| 기준 CNN 실험 | 73.59% |
+| 가장 성능이 좋았던 CNN 실험 | **80.08%** |
+
+위 표는 확인된 기준 실험과 최고 성능만 정리한 것입니다. 나머지 실험의 수치와 세부 하이퍼파라미터를 이 README에서 임의로 채우지는 않았습니다.
+
+## 4. 해 보면서 어려웠던 점
+
+**첫 번째는 무엇을 바꿨기 때문에 성능이 달라졌는지 이해하는 일이었습니다.** 정확도가 조금 높아졌다고 해서 모델 자체가 더 좋아졌다고 단정하기는 어렵습니다. 그래서 커널 크기, 임베딩 차원, 입력 길이처럼 비교할 수 있는 조건을 중심으로 결과를 살펴보았습니다.
+
+**두 번째는 성능과 모델 크기 사이의 균형이었습니다.** 더 큰 임베딩이나 더 긴 입력이 좋은 결과를 만들지 않는 경우가 있었습니다. 이런 경험을 통해 딥러닝에서는 모델을 크게 만드는 것보다 **실제 데이터에 어떤 설정이 맞는지 직접 실험하는 과정**이 중요하다고 느꼈습니다.
+
+**세 번째는 정확도 숫자를 어떻게 받아들일지였습니다.** 80.08%라는 결과는 기준 실험보다 좋았지만, 반대로 생각하면 여전히 잘못 분류하는 트윗이 남아 있다는 뜻이기도 합니다. 이번 프로젝트에서는 모델 설정별 정확도를 비교하는 데 집중했지만, 다음에는 오분류 문장을 직접 모아 어떤 표현에서 틀리는지 살펴보고 싶습니다.
+
+## 5. 아쉬운 점과 다음에 해보고 싶은 것
+
+이번 프로젝트에서는 CNN 설정을 바꿔 가며 성능 차이를 확인하는 데 집중했습니다. 지금 다시 진행한다면 정확도뿐 아니라 **Precision, Recall, F1-score와 혼동행렬**도 함께 확인하고 싶습니다. 긍정과 부정 중 어느 쪽을 더 자주 잘못 분류하는지 알아야 모델의 약점을 설명할 수 있기 때문입니다.
+
+또한 Sentiment140의 학습 레이블은 사람이 일일이 감정을 판정한 것이 아니라 이모티콘 등을 이용해 자동으로 붙인 값입니다. 따라서 레이블 자체에 오류가 있을 수 있고, 오래된 영어 트윗으로 학습한 결과가 현재의 SNS 표현에도 그대로 적용된다고 보기는 어렵습니다.
+
+다음에는 같은 데이터와 평가 기준에서 **TF-IDF + Logistic Regression 같은 간단한 모델**도 비교해 보고 싶습니다. CNN이 얼마나 복잡한 모델인지만 보여주는 것보다, 단순한 기준 모델과 비교했을 때 실제로 어떤 장점이 있는지 설명하는 것이 더 의미 있다고 생각합니다. 이 비교는 앞으로 해보고 싶은 작업이며, 이번 결과에 포함된 실험은 아닙니다.
+
+## 이 프로젝트에서 배운 점
+
+처음에는 CNN 모델의 성능을 높이는 것이 가장 큰 목표였습니다. 그런데 여러 설정을 바꿔 보면서, **왜 어떤 설정은 좋아지고 어떤 설정은 오히려 도움이 되지 않는지** 이해하는 일이 더 중요하다는 생각이 들었습니다.
+
+커널 크기를 5에서 3으로 바꿨을 때 성능이 개선된 반면, 임베딩 차원과 입력 길이를 늘리는 것이 항상 좋은 결과를 주지는 않았습니다. 앞으로 다른 딥러닝 모델을 공부할 때도 모델을 무작정 복잡하게 만드는 대신, 기준이 되는 실험을 먼저 만들고 조건을 하나씩 비교해 보는 방식을 이어가고 싶습니다.
+
+---
+
+**사용 기술:** Python, PyTorch, 1D CNN, 텍스트 분류, 하이퍼파라미터 실험  
+**데이터 출처:** [Sentiment140 — Stanford NLP](https://huggingface.co/datasets/stanfordnlp/sentiment140)  
+**프로젝트 성격:** 학습 및 실험 프로젝트. 실제 서비스 배포 결과는 아닙니다.
